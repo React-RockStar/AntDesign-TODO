@@ -3,6 +3,7 @@ import { Table, Button, Image, Typography, Progress } from "antd";
 import "./App.css";
 
 const App = () => {
+  // Default columns
   const defaultColumns = [
     {
       index: 0,
@@ -16,10 +17,12 @@ const App = () => {
               position: "relative",
             }}
           >
+            {/* Add new vendor */}
             <Image
               src="https://cdn.pixabay.com/photo/2014/04/02/10/55/plus-304947_960_720.png"
               width={30}
               preview={false}
+              onClick={addNewVendor}
             />
             <Button type="link" onClick={addNewVendor}>
               Add new Vendor
@@ -30,13 +33,21 @@ const App = () => {
       dataIndex: "vendor",
       key: "vendor",
       render: (children, record) => (
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            cursor: "pointer",
+          }}
+          onClick={record.key > 0 ? () => addNewLeaf(record.key) : null}
+        >
           {children}
+          {/* Add delete button after overall score */}
           {record.key > 0 && (
             <Button
               shape="circle"
               danger
-              onClick={() => deleteSelectedCriteria(record.key)}
+              onClick={(e) => deleteSelectedCriteria(e, record.key)}
             >
               X
             </Button>
@@ -44,6 +55,7 @@ const App = () => {
         </div>
       ),
     },
+    // Sample Vendor
     {
       index: 1,
       title: () =>
@@ -67,6 +79,7 @@ const App = () => {
         </div>
       ),
     },
+    // Sample Vendor
     {
       index: 2,
       title: () =>
@@ -90,6 +103,7 @@ const App = () => {
         </div>
       ),
     },
+    // Sample Vendor
     {
       index: 3,
       title: () =>
@@ -114,7 +128,7 @@ const App = () => {
       ),
     },
   ];
-
+  // Sample Criterial
   const defaultDataSource = [
     {
       key: 0,
@@ -125,17 +139,18 @@ const App = () => {
     },
     {
       key: 1,
-      vendor: <Typography.Text>Criteria with Leaf</Typography.Text>,
+      vendor: <Typography.Text>Criteria with Leaf, Onclick me</Typography.Text>,
       dropbox: <Typography.Text>Criteria 1</Typography.Text>,
       googledrive: <Typography.Text>Criteria 1</Typography.Text>,
       salesforce: <Typography.Text>Criteria 3</Typography.Text>,
-      description: "This is a description leaf",
+      descriptions: ["This is a  leaf", "This is second a leaf"],
     },
   ];
 
   const [columns, setColumns] = React.useState(defaultColumns);
   const [dataSource, setDataSource] = React.useState(defaultDataSource);
 
+  // This will render image with title and delete button on top right
   const renderTitleImage = ({ src, title, index }) => (
     <div
       style={{
@@ -156,19 +171,22 @@ const App = () => {
     </div>
   );
 
+  // Add new vendor function
   const addNewVendor = () => {
+    // I will use columns inside setState function because of closure. However you can break it by set up to it a context api.
     setColumns((columns) => {
+      // new Vendor object
       const newVendor = {
-        index: columns.length,
+        index: columns[columns.length - 1].index + 1,
         title: () =>
           renderTitleImage({
             src:
               "https://cdn.pixabay.com/photo/2014/04/02/10/55/plus-304947_960_720.png",
-            title: `New Vendor ${columns.length}`,
-            index: columns.length,
+            title: `New Vendor ${columns[columns.length - 1].index + 1}`,
+            index: columns[columns.length - 1].index + 1,
           }),
-        dataIndex: `newvendor${columns.length}`,
-        key: `newvendor${columns.length}`,
+        dataIndex: `newvendor${columns[columns.length - 1].index + 1}`,
+        key: `newvendor${columns[columns.length - 1].index + 1}`,
         render: (children) => (
           <div
             style={{
@@ -185,42 +203,71 @@ const App = () => {
     });
   };
 
+  // delete selected vendor function
   const deleteSelectedVendor = (index) => {
-    console.log("vendor", columns);
-    console.log(index);
-
     setColumns((columns) => columns.filter((column) => column.index !== index));
   };
 
+  // add new criteria function
   const addNewCriteria = () => {
+    // I put my explaination in addnewvendor function
     setDataSource((dataSource) => {
+      //We need a base criteria
       const newCriteria = {
         key: dataSource[dataSource.length - 1].key + 1,
+        descriptions: [],
       };
 
+      // This loop will find the rest of vendor that had been created
       for (let index = 0; index < columns.length; index++) {
         const element = columns[index];
         if (index === 0) {
+          // the first column
           newCriteria[element.key] = (
             <Typography.Text>Criteria name {dataSource.length}</Typography.Text>
           );
         } else {
+          // The next vendors column
           newCriteria[element.key] = (
             <Typography.Text>Random {index + 1}</Typography.Text>
           );
         }
-
-        console.log(newCriteria);
       }
 
       return [...dataSource, newCriteria];
     });
   };
 
-  const deleteSelectedCriteria = (key) => {
+  // deleteSelectedCriteria
+  const deleteSelectedCriteria = (e, key) => {
+    // I need to prevent it because I use onclick on the parent
+    e.stopPropagation();
+    // just filtered it out
     setDataSource((dataSource) =>
       dataSource.filter((item) => item.key !== key)
     );
+  };
+
+  // Add new leaf function
+  const addNewLeaf = (key) => {
+    setDataSource((dataSource) => {
+      // we need to take the selected dataSource out and push new leaf
+      const processedDataSource = dataSource.find((item) => item.key === key);
+
+      processedDataSource.descriptions.push(
+        `New data source${processedDataSource.descriptions.length}`
+      );
+
+      // Then filtered the current datasource and add the processed data source after it
+      const filteredDataSource = dataSource.filter((item) => item.key !== key);
+
+      // I sort it to prevent new data change
+      const newDataSource = [...filteredDataSource, processedDataSource].sort(
+        (a, b) => a.key - b.key
+      );
+
+      return newDataSource;
+    });
   };
 
   return (
@@ -233,12 +280,16 @@ const App = () => {
         columns={columns}
         bordered
         pagination={false}
+        // So expandedRowRender is the render method for leaf, and row Expandable is the logic
         expandable={{
           expandedRowRender: (record) => {
-            console.log(record);
-            return <p style={{ margin: 0 }}>{record.description}</p>;
+            return record.descriptions.map((item) => (
+              <p style={{ margin: 0 }} key={item}>
+                {item}
+              </p>
+            ));
           },
-          rowExpandable: (record) => record.description,
+          rowExpandable: (record) => record.descriptions?.length > 0,
         }}
       />
     </div>
